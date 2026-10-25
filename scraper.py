@@ -44,82 +44,72 @@ def scrape_movies():
 
             print(f"Processing movie: {title}")
 
-            # Step 1: Movie detail page
+            # Step 1: Movie detail page par jana
             detail_soup = get_soup(movie_href)
             if not detail_soup:
                 continue
 
-            dl_link_tag = detail_soup.find('a', class_='bg2')
-            if not dl_link_tag or 'href' not in dl_link_tag.attrs:
-                continue
-
-            inner_dl_href = dl_link_tag['href']
-            if not inner_dl_href.startswith('http'):
-                inner_dl_href = BASE_URL + inner_dl_href
-
-            # Step 2: Resolution selection page
-            res_soup = get_soup(inner_dl_href)
-            if not res_soup:
-                continue
-
-            # 1080p link dhoondna, agar na mile toh available best link lena
+            # Us page par jitne bhi links hain, unme se filesdl ya cloud links dhoondna
             target_href = None
-            for a_tag in res_soup.find_all('a', href=True):
+            for a_tag in detail_soup.find_all('a', href=True):
+                href = a_tag['href']
                 text = a_tag.get_text()
-                if '1080p' in text or '1.8Gb' in text:
-                    target_href = a_tag['href']
-                    break
-            
-            # Agar 1080p explicitly na mile toh koi bhi valid filesdl link utha lo
-            if not target_href:
-                for a_tag in res_soup.find_all('a', href=True):
-                    href = a_tag['href']
-                    if 'filesdl.in' in href or 'cloud' in href:
+                # 1080p ya download links ko target karna
+                if '1080p' in text or 'Download' in text or 'filesdl' in href or 'cloud' in href:
+                    if not href.startswith('http'):
+                        target_href = BASE_URL + href
+                    else:
                         target_href = href
-                        break
+                    break
 
             if not target_href:
                 continue
 
-            if not target_href.startswith('http'):
-                target_href = BASE_URL + target_href
-
-            # Step 3: Final download page
+            # Step 2: Us link ko background me open karna
             final_soup = get_soup(target_href)
             if not final_soup:
-                continue
-
-            best_stream_url = None
-            r2_link = final_soup.find('a', class_=lambda x: x and ('download-link' in x or 'button2' in x))
-            if r2_link and 'href' in r2_link.attrs:
-                best_stream_url = r2_link['href']
-
-            if not best_stream_url:
+                # Agar seedha direct link hi mil gaya ho toh wahi use kar lo
+                if 'pub-' in target_href or 'r2.dev' in target_href or 'pixeldrain.dev' in target_href:
+                    best_stream_url = target_href
+                else:
+                    continue
+            else:
+                best_stream_url = None
+                # Final page se r2 ya stream link nikalna
                 for a_tag in final_soup.find_all('a', href=True):
                     href = a_tag['href']
-                    if 'pub-' in href or 'r2.dev' in href or 'pixeldrain.dev' in href:
+                    if 'pub-' in href or 'r2.dev' in href or 'pixeldrain.dev' in href or 'fast' in href:
                         best_stream_url = href
                         break
+                
+                # Agar upar wala na mile toh koi bhi valid download link utha lo
+                if not best_stream_url:
+                    for a_tag in final_soup.find_all('a', href=True):
+                        href = a_tag['href']
+                        if 'cloud/' in href or 'file/' in href:
+                            best_stream_url = BASE_URL + href if not href.startswith('http') else href
+                            break
 
             if not best_stream_url:
                 continue
 
+            # Pixeldrain URL fix
             if 'pixeldrain.dev/u/' in best_stream_url:
                 best_stream_url = best_stream_url.replace('/u/', '/api/file/')
 
             tvg_logo = img_url if img_url else ''
             m3u_entry = f'#EXTINF:-1 tvg-logo="{tvg_logo}" group-title="🍿4K Movies Latest",{title}\n{best_stream_url}\n'
             m3u_entries.append(m3u_entry)
+            print(f"Added successfully: {title}")
 
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error processing {title}: {e}")
             continue
 
     return m3u_entries
 
 def update_playlist_file(entries):
     header = "#EXTM3U\n"
-    # Agar entries khali bhi ho toh kam se kam header ke sath file ban jaye taaki error na aaye
     content = header + "\n".join(entries) if entries else header + "# No movies found currently\n"
 
     with open(PLAYLIST_FILE, 'w', encoding='utf-8') as f:
