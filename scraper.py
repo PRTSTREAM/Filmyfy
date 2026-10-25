@@ -62,7 +62,7 @@ def scrape_movies():
             if not res_soup:
                 continue
 
-            # Strict 1080p target filter
+            # Strict 1080p target filter (Chahe WEB-DL ho, HD ho ya 10bit ho)
             target_href = None
             candidate_links = []
             for a_tag in res_soup.find_all('a', href=True):
@@ -70,12 +70,18 @@ def scrape_movies():
                 if '1080p' in text:
                     candidate_links.append(a_tag['href'])
             
-            # Agar 1080p links milte hain toh sabse behtareen/aakhri wala (jaise WEB-DL) uthao
+            # Agar 1080p links milte hain toh sabse behtareen/aakhri wala uthao
             if candidate_links:
                 target_href = candidate_links[-1]
             
+            # Agar 1080p explicit na mile toh koi bhi available filesdl/drive link utha lo taaki playlist khali na rahe
             if not target_href:
-                print(f"Skipping {title}: 1080p link not found.")
+                all_links = [a['href'] for a in res_soup.find_all('a', href=True) if 'filesdl.in' in a['href'] or 'cloud' in a['href'] or 'drive' in a['href']]
+                if all_links:
+                    target_href = all_links[-1]
+
+            if not target_href:
+                print(f"Skipping {title}: No valid link found.")
                 continue
 
             if not target_href.startswith('http'):
@@ -96,6 +102,7 @@ def scrape_movies():
                         best_stream_url = href
                         break
                 
+                # Agar direct r2 link na mile toh page par jo bhi pehla cloud/drive link mile use utha lo
                 if not best_stream_url:
                     for a_tag in final_soup.find_all('a', href=True):
                         href = a_tag['href']
@@ -113,7 +120,7 @@ def scrape_movies():
             tvg_logo = img_url if img_url else ''
             m3u_entry = f'#EXTINF:-1 tvg-logo="{tvg_logo}" group-title="🍿4K Movies Latest",{title}\n{best_stream_url}\n'
             m3u_entries.append(m3u_entry)
-            print(f"Added (1080p): {title}")
+            print(f"Added: {title}")
 
         except Exception as e:
             print(f"Error processing {title}: {e}")
