@@ -57,40 +57,35 @@ def scrape_movies():
             if not inner_dl_href.startswith('http'):
                 inner_dl_href = BASE_URL + inner_dl_href
 
-            # Step 2: Resolution selection page (480p, 720p, 1080p options)
+            # Step 2: Resolution selection page
             res_soup = get_soup(inner_dl_href)
             if not res_soup:
                 continue
 
-            # 1080p ya highest quality link specifically dhundna
+            # Strict check: Sirf 1080p wala link hi dhoondna hai (HEVC ya 480p/720p ignore karne ke liye)
             target_1080p_href = None
             for a_tag in res_soup.find_all('a', href=True):
                 text = a_tag.get_text()
-                if '1080p' in text or '1.8Gb' in text:
+                # Check karo ki text me 1080p ho aur wo HTML/middle page na ho kar final link wala pattern ho
+                if '1080p' in text:
                     target_1080p_href = a_tag['href']
                     break
-            
-            # Agar 1080p text na mile toh sabse aakhri (highest resolution) link utha lo
-            if not target_1080p_href:
-                all_links = [a['href'] for a in res_soup.find_all('a', href=True) if 'filesdl.in' in a['href'] or 'cloud' in a['href']]
-                if all_links:
-                    target_1080p_href = all_links[-1]
 
             if not target_1080p_href:
-                print(f"Skipping {title}: 1080p link not found.")
+                print(f"Skipping {title}: Strict 1080p link not found.")
                 continue
 
             if not target_1080p_href.startswith('http'):
                 target_1080p_href = BASE_URL + target_1080p_href
 
-            # Step 3: Final download page (jahan actual direct link hota hai)
+            # Step 3: Final download page par jana jahan actual stream link hai
             final_soup = get_soup(target_1080p_href)
             if not final_soup:
                 continue
 
             best_stream_url = None
 
-            # Cloud Direct / R2 link dhundna
+            # Direct stream / r2 link dhundna
             r2_link = final_soup.find('a', class_=lambda x: x and ('download-link' in x or 'button2' in x))
             if r2_link and 'href' in r2_link.attrs:
                 best_stream_url = r2_link['href']
@@ -102,11 +97,11 @@ def scrape_movies():
                         best_stream_url = href
                         break
 
-            if not best_stream_url:
-                print(f"Skipping {title}: Final stream link not found.")
+            if not best_stream_url or '.html' in best_stream_url:
+                print(f"Skipping {title}: Valid final stream link not found.")
                 continue
 
-            # Pixeldrain URL fix agar ho toh
+            # Pixeldrain URL fix
             if 'pixeldrain.dev/u/' in best_stream_url:
                 best_stream_url = best_stream_url.replace('/u/', '/api/file/')
 
