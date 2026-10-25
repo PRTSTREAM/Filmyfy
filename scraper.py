@@ -1,6 +1,5 @@
 import os
 import re
-from bs4ational import BeautifulSoup
 from bs4 import BeautifulSoup
 import requests
 
@@ -132,7 +131,6 @@ def scrape_movies():
                 tvg_logo = img_url if img_url else ''
                 m3u_entry = f'#EXTINF:-1 tvg-logo="{tvg_logo}" group-title="🍿4K Movies Latest",{title}\n{best_stream_url}\n'
                 
-                # Duplicate entries se bachne ke liye check karna
                 if m3u_entry not in m3u_entries:
                     m3u_entries.append(m3u_entry)
                     print(f"Added: {title}")
