@@ -44,7 +44,7 @@ def scrape_movies():
 
             print(f"Processing movie: {title}")
 
-            # Step 1: Movie detail page par jana
+            # Step 1: Movie detail page
             detail_soup = get_soup(movie_href)
             if not detail_soup:
                 continue
@@ -62,30 +62,34 @@ def scrape_movies():
             if not res_soup:
                 continue
 
-            # Strict check: Sirf 1080p wala link hi dhoondna hai (HEVC ya 480p/720p ignore karne ke liye)
-            target_1080p_href = None
+            # 1080p link dhoondna, agar na mile toh available best link lena
+            target_href = None
             for a_tag in res_soup.find_all('a', href=True):
                 text = a_tag.get_text()
-                # Check karo ki text me 1080p ho aur wo HTML/middle page na ho kar final link wala pattern ho
-                if '1080p' in text:
-                    target_1080p_href = a_tag['href']
+                if '1080p' in text or '1.8Gb' in text:
+                    target_href = a_tag['href']
                     break
+            
+            # Agar 1080p explicitly na mile toh koi bhi valid filesdl link utha lo
+            if not target_href:
+                for a_tag in res_soup.find_all('a', href=True):
+                    href = a_tag['href']
+                    if 'filesdl.in' in href or 'cloud' in href:
+                        target_href = href
+                        break
 
-            if not target_1080p_href:
-                print(f"Skipping {title}: Strict 1080p link not found.")
+            if not target_href:
                 continue
 
-            if not target_1080p_href.startswith('http'):
-                target_1080p_href = BASE_URL + target_1080p_href
+            if not target_href.startswith('http'):
+                target_href = BASE_URL + target_href
 
-            # Step 3: Final download page par jana jahan actual stream link hai
-            final_soup = get_soup(target_1080p_href)
+            # Step 3: Final download page
+            final_soup = get_soup(target_href)
             if not final_soup:
                 continue
 
             best_stream_url = None
-
-            # Direct stream / r2 link dhundna
             r2_link = final_soup.find('a', class_=lambda x: x and ('download-link' in x or 'button2' in x))
             if r2_link and 'href' in r2_link.attrs:
                 best_stream_url = r2_link['href']
@@ -97,11 +101,9 @@ def scrape_movies():
                         best_stream_url = href
                         break
 
-            if not best_stream_url or '.html' in best_stream_url:
-                print(f"Skipping {title}: Valid final stream link not found.")
+            if not best_stream_url:
                 continue
 
-            # Pixeldrain URL fix
             if 'pixeldrain.dev/u/' in best_stream_url:
                 best_stream_url = best_stream_url.replace('/u/', '/api/file/')
 
@@ -110,22 +112,19 @@ def scrape_movies():
             m3u_entries.append(m3u_entry)
 
         except Exception as e:
-            print(f"Error processing {title}: {e}")
+            print(f"Error: {e}")
             continue
 
     return m3u_entries
 
 def update_playlist_file(entries):
-    if not entries:
-        print("No entries found to update.")
-        return
-
     header = "#EXTM3U\n"
-    content = header + "\n".join(entries)
+    # Agar entries khali bhi ho toh kam se kam header ke sath file ban jaye taaki error na aaye
+    content = header + "\n".join(entries) if entries else header + "# No movies found currently\n"
 
     with open(PLAYLIST_FILE, 'w', encoding='utf-8') as f:
         f.write(content)
-    print(f"Playlist updated successfully with {len(entries)} items!")
+    print(f"Playlist updated with {len(entries)} items!")
 
 if __name__ == "__main__":
     movie_entries = scrape_movies()
