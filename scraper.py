@@ -49,69 +49,77 @@ def scrape_movies():
             if not detail_soup:
                 continue
 
-            dl_link_tag = detail_soup.find('a', class_='bg2')
-            if not dl_link_tag or 'href' not in dl_link_tag.attrs:
-                continue
-
-            inner_dl_href = dl_link_tag['href']
-            if not inner_dl_href.startswith('http'):
-                inner_dl_href = BASE_URL + inner_dl_href
-
-            # Step 2: Resolution selection page par jana
-            res_soup = get_soup(inner_dl_href)
-            if not res_soup:
-                continue
-
-            # Strict 1080p target filter (Chahe WEB-DL ho, HD ho ya 10bit ho)
-            target_href = None
-            candidate_links = []
-            for a_tag in res_soup.find_all('a', href=True):
+            # Sabhi links dhoondo jo download ya resolution page ki taraf le jaate hain
+            possible_dl_href = None
+            for a_tag in detail_soup.find_all('a', href=True):
+                href = a_tag['href']
                 text = a_tag.get_text()
-                if '1080p' in text:
-                    candidate_links.append(a_tag['href'])
-            
-            # Agar 1080p links milte hain toh sabse behtareen/aakhri wala uthao
-            if candidate_links:
-                target_href = candidate_links[-1]
-            
-            # Agar 1080p explicit na mile toh koi bhi available filesdl/drive link utha lo taaki playlist khali na rahe
-            if not target_href:
-                all_links = [a['href'] for a in res_soup.find_all('a', href=True) if 'filesdl.in' in a['href'] or 'cloud' in a['href'] or 'drive' in a['href']]
-                if all_links:
-                    target_href = all_links[-1]
+                if 'Download' in text or 'bg2' in a_tag.get('class', []) or 'movie/' in href or 'cloud/' in href:
+                    possible_dl_href = href
+                    break
 
+            if not possible_dl_href:
+                # Agar koi specific button na mile toh pehla link hi utha lo
+                first_a = detail_soup.find('a', href=True)
+                if first_a:
+                    possible_dl_href = first_a['href']
+                else:
+                    continue
+
+            if not possible_dl_href.startswith('http'):
+                possible_dl_href = BASE_URL + possible_dl_href
+
+            # Step 2: Intermediate/Resolution page par jana
+            res_soup = get_soup(possible_dl_href)
+            
+            target_href = None
+            if res_soup:
+                # 1080p dhoondna chahe wo kisi bhi format me ho
+                candidate_links = []
+                for a_tag in res_soup.find_all('a', href=True):
+                    text = a_tag.get_text()
+                    href = a_tag['href']
+                    if '1080p' in text:
+                        candidate_links.append(href)
+                
+                if candidate_links:
+                    target_href = candidate_links[-1]
+                else:
+                    # Agar 1080p explicit text na mile toh koi bhi filesdl ya cloud link utha lo
+                    for a_tag in res_soup.find_all('a', href=True):
+                        href = a_tag['href']
+                        if 'filesdl.in' in href or 'cloud/' in href or 'drive/' in href:
+                            target_href = href
+                            break
+            
+            # Agar res_soup fail ho jaye toh direct link hi use kar lo
             if not target_href:
-                print(f"Skipping {title}: No valid link found.")
-                continue
+                target_href = possible_dl_href
 
             if not target_href.startswith('http'):
                 target_href = BASE_URL + target_href
 
-            # Step 3: Final download page par jana
+            # Step 3: Final Download Page ya Stream Link
             final_soup = get_soup(target_href)
-            if not final_soup:
-                if 'pub-' in target_href or 'r2.dev' in target_href or 'pixeldrain.dev' in target_href:
-                    best_stream_url = target_href
-                else:
-                    continue
-            else:
-                best_stream_url = None
+            best_stream_url = None
+
+            if final_soup:
                 for a_tag in final_soup.find_all('a', href=True):
                     href = a_tag['href']
                     if 'pub-' in href or 'r2.dev' in href or 'pixeldrain.dev' in href or 'fast' in href:
                         best_stream_url = href
                         break
                 
-                # Agar direct r2 link na mile toh page par jo bhi pehla cloud/drive link mile use utha lo
                 if not best_stream_url:
                     for a_tag in final_soup.find_all('a', href=True):
                         href = a_tag['href']
                         if 'cloud/' in href or 'file/' in href or 'drive/' in href:
                             best_stream_url = BASE_URL + href if not href.startswith('http') else href
                             break
-
+            
+            # Agar final page se link na mile toh target_href ko hi stream url maan lo
             if not best_stream_url:
-                continue
+                best_stream_url = target_href
 
             # Pixeldrain URL fix
             if 'pixeldrain.dev/u/' in best_stream_url:
@@ -120,7 +128,7 @@ def scrape_movies():
             tvg_logo = img_url if img_url else ''
             m3u_entry = f'#EXTINF:-1 tvg-logo="{tvg_logo}" group-title="🍿4K Movies Latest",{title}\n{best_stream_url}\n'
             m3u_entries.append(m3u_entry)
-            print(f"Added: {title}")
+            print(f"Successfully Added: {title}")
 
         except Exception as e:
             print(f"Error processing {title}: {e}")
