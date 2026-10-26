@@ -7,7 +7,7 @@ import requests
 # Agar kabhi domain badle, toh bas yahan naya URL daal dena (Sab jagah apne aap apply ho jayega)
 BASE_URL = "https://filmyfly.family"
 PLAYLIST_FILE = "playlist.m3u"
-MAX_PAGES = 40  # Page 1 se 40 tak crawl karega
+MAX_PAGES = 70  # Page 1 se 40 tak crawl karega
 
 def get_soup(url):
     try:
