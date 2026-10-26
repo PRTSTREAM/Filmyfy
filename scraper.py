@@ -3,7 +3,7 @@ import re
 from bs4 import BeautifulSoup
 import requests
 
-=== DOMAIN CONFIGURATION ===
+# === DOMAIN CONFIGURATION ===
 
 BASE_URL = "https://filmyfly.family"
 PLAYLIST_FILE = "playlist.m3u"
