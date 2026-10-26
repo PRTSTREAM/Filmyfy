@@ -1,12 +1,12 @@
 import re
 import requests
-from bs4soup
+from bs4 import BeautifulSoup
 
 # ==================== CONFIGURATION ====================
-# यहाँ ऑफिशियल डोमेन सबसे ऊपर है ताकि भविष्य में बदलने में आसानी हो
+# आधिकारिक डोमेन सबसे ऊपर ताकि बदलने में आसानी हो
 BASE_URL = "https://filmyfly.family"
-TOTAL_PAGES = 2  # फिलहाल 2 पेज हैं, बाद में इसे बढ़ा सकते हैं
-OUTPUT_PLAYLIST = "playlist.m3u"  # या जो भी आपकी प्लेलिस्ट फाईल का नाम हो
+TOTAL_PAGES = 2  # फिलहाल 2 पेज, बाद में इसे बढ़ा सकते हैं
+OUTPUT_PLAYLIST = "playlist.m3u"
 # =======================================================
 
 HEADERS = {
@@ -62,7 +62,7 @@ def scrape_movies():
                 if not movie_soup:
                     continue
                 
-                # 4. "Download This Movie" वाला रीडायरेक्ट लिंक ढूँढना (linkmake.in या dlbtn)
+                # 4. "Download This Movie" वाला रीडायरेक्ट लिंक ढूँढना
                 dlbtn_div = movie_soup.find('div', class_='dlbtn')
                 if not dlbtn_div:
                     continue
@@ -79,7 +79,6 @@ def scrape_movies():
                     continue
                 
                 # 6. सिर्फ 1080p-HD वाला लिंक ढूँढना और बाकी सबको ignore करना
-                # आपके दिए गए HTML स्ट्रक्चर के मुताबिक 1080p-HD की पहचान:
                 final_1080p_link = ""
                 all_links = final_soup.find_all('a')
                 for a in all_links:
@@ -103,7 +102,6 @@ def scrape_movies():
     return movies_data
 
 def update_playlist(movies):
-    # इसे अपनी जरूरत के हिसाब से M3U या Custom Format में सेव कर सकते हैं
     with open(OUTPUT_PLAYLIST, 'w', encoding='utf-8') as f:
         f.write("#EXTM3U\n")
         for m in movies:
