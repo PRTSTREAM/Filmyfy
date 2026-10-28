@@ -3,7 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 
 # ==================== CONFIGURATION ====================
-# आधिकारिक डोमेन सबसे ऊपर ताकि बदलने में आसानी हो
 BASE_URL = "https://filmyfly.church"
 TOTAL_PAGES = 2  # इसे बाद में अपनी जरूरत के हिसाब से बढ़ा या घटा सकते हैं
 OUTPUT_PLAYLIST = "playlist.m3u"
@@ -47,7 +46,7 @@ def scrape_movies():
                 relative_movie_link = link_tag.get('href')
                 movie_link = BASE_URL + relative_movie_link if relative_movie_link.startswith('/') else relative_movie_link
                 
-                # 2. Poster Image URL बदलना (60-65-2x -> 280-380-3x)
+                # 2. Poster Image URL बदलना
                 img_tag = item.find('img')
                 poster_url = ""
                 if img_tag:
@@ -78,12 +77,31 @@ def scrape_movies():
                 if not final_soup:
                     continue
                 
-                # 6. फाइनल पेज से सीधे सबसे आखिरी (Last) डाउनलोड बटन का लिंक उठाना
+                # 6. सही 1080p / HD डाउनलोड लिंक ढूँढना (फालतू/फुटर लिंक्स को छोड़कर)
                 final_link = ""
-                all_links = final_soup.find_all('a')
                 
-                if all_links:
-                    final_link = all_links[-1].get('href')
+                # पहले .dlink क्लास के अंदर वाले डाउनलोड बटन चेक करें (जो सबसे सटीक होते हैं)
+                dlink_divs = final_soup.find_all('div', class_='dlink')
+                if dlink_divs:
+                    for dlink in reversed(dlink_divs):
+                        a_tag = dlink.find('a')
+                        if a_tag and a_tag.get('href'):
+                            txt = a_tag.get_text().lower()
+                            href = a_tag.get('href')
+                            # 1080p या सबसे हाई क्वालिटी वाला बटन चुनें और contact.html से बचें
+                            if ("1080" in txt or "hd" in txt or "cloud" in href) and "contact" not in href:
+                                final_link = href
+                                break
+                
+                # अगर ऊपर से न मिले, तो पेज के सभी लिंक्स में से आखिरी सही डाउनलोड लिंक ढूंढें
+                if not final_link:
+                    all_links = final_soup.find_all('a')
+                    for a in reversed(all_links):
+                        href = a.get('href')
+                        txt = a.get_text().lower()
+                        if href and ('1080' in txt or 'hd' in txt or 'filesdl' in href or 'drive' in href) and 'contact' not in href and 'index' not in href:
+                            final_link = href
+                            break
                 
                 if final_link:
                     movies_data.append({
@@ -91,7 +109,7 @@ def scrape_movies():
                         'poster': poster_url,
                         'download_link': final_link
                     })
-                    print(f"Added last button link for: {movie_title}")
+                    print(f"Added best HD link for: {movie_title}")
                     
             except Exception as e:
                 print(f"Error parsing item: {e}")
