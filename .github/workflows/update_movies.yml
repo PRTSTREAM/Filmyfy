@@ -1,4 +1,4 @@
-Name: Update FilmyFly 1080p Playlist
+name: Update FilmyFly 1080p Playlist
 
 on:
   schedule:
