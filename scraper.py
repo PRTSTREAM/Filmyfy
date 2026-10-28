@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 # ==================== CONFIGURATION ====================
 # आधिकारिक डोमेन सबसे ऊपर ताकि बदलने में आसानी हो
 BASE_URL = "https://filmyfly.family"
-TOTAL_PAGES = 50  # फिलहाल 2 पेज, बाद में इसे बढ़ा सकते हैं
+TOTAL_PAGES = 50  # इसे बाद में अपनी जरूरत के हिसाब से बढ़ा या घटा सकते हैं
 OUTPUT_PLAYLIST = "playlist.m3u"
 # =======================================================
 
@@ -78,22 +78,20 @@ def scrape_movies():
                 if not final_soup:
                     continue
                 
-                # 6. सिर्फ 1080p-HD वाला लिंक ढूँढना और बाकी सबको ignore करना
-                final_1080p_link = ""
+                # 6. फाइनल पेज से सीधे सबसे आखिरी (Last) डाउनलोड बटन का लिंक उठाना
+                final_link = ""
                 all_links = final_soup.find_all('a')
-                for a in all_links:
-                    text = a.get_text()
-                    if "1080p" in text or "1080p-HD" in text:
-                        final_1080p_link = a.get('href')
-                        break
                 
-                if final_1080p_link:
+                if all_links:
+                    final_link = all_links[-1].get('href')
+                
+                if final_link:
                     movies_data.append({
                         'title': movie_title,
                         'poster': poster_url,
-                        'download_link': final_1080p_link
+                        'download_link': final_link
                     })
-                    print(f"Found 1080p link for: {movie_title}")
+                    print(f"Added last button link for: {movie_title}")
                     
             except Exception as e:
                 print(f"Error parsing item: {e}")
