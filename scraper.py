@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 # ==================== CONFIGURATION ====================
 # आधिकारिक डोमेन सबसे ऊपर ताकि बदलने में आसानी हो
-BASE_URL = "https://filmyfly.family"
+BASE_URL = "https://filmyfly.church"
 TOTAL_PAGES = 2  # इसे बाद में अपनी जरूरत के हिसाब से बढ़ा या घटा सकते हैं
 OUTPUT_PLAYLIST = "playlist.m3u"
 # =======================================================
